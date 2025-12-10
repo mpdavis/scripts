@@ -25,13 +25,7 @@ def get_cpu_stats():
     return {
         "usage_percent": psutil.cpu_percent(interval=1),
         "count_physical": psutil.cpu_count(logical=False),
-        "count_logical": psutil.cpu_count(logical=True),
-        "frequency": {
-            "current": psutil.cpu_freq().current if psutil.cpu_freq() else None,
-            "min": psutil.cpu_freq().min if psutil.cpu_freq() else None,
-            "max": psutil.cpu_freq().max if psutil.cpu_freq() else None,
-        } if psutil.cpu_freq() else None,
-        "per_cpu_percent": psutil.cpu_percent(interval=1, percpu=True),
+        "count_logical": psutil.cpu_count(logical=True)
     }
 
 
