@@ -36,13 +36,24 @@ pip install -r requirements.txt
 python stats.py
 ```
 
-**Output:**
-Generates `server_stats.json` in the current directory.
+**Usage:**
+```bash
+# Use default output file (server_stats.json)
+python stats.py
+
+# Specify custom output path
+python stats.py -o /var/www/html/stats.json
+python stats.py --output /path/to/custom.json
+```
 
 **Automated updates:**
 Add to crontab for periodic updates:
 ```bash
+# Update every 5 minutes to default location
 */5 * * * * cd /path/to/scripts && python stats.py
+
+# Update to web server directory
+*/5 * * * * cd /path/to/scripts && python stats.py -o /var/www/html/stats.json
 ```
 
 ## Contributing

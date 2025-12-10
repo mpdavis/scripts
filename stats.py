@@ -10,6 +10,7 @@ import json
 import os
 import platform
 import socket
+import subprocess
 from datetime import datetime
 
 try:
@@ -34,86 +35,47 @@ def get_cpu_stats():
     }
 
 
-def get_memory_stats():
-    """Get memory statistics."""
-    mem = psutil.virtual_memory()
-    swap = psutil.swap_memory()
+def get_directory_size(path):
+    """Calculate total size of a directory using du command."""
+    try:
+        # Use du -sB GB for Linux systems
+        result = subprocess.Popen(
+            ['du', '-sB', 'GB', path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        stdout, _ = result.communicate()
 
-    return {
-        "virtual": {
-            "total": mem.total,
-            "available": mem.available,
-            "used": mem.used,
-            "percent": mem.percent,
-        },
-        "swap": {
-            "total": swap.total,
-            "used": swap.used,
-            "free": swap.free,
-            "percent": swap.percent,
+        # Output format: "123GB /path/to/dir"
+        output = stdout.decode().split()[0]
+        # Remove 'GB' suffix and convert to float
+        size_gb = float(output.rstrip('GB'))
+        size_bytes = int(size_gb * (1024.0 ** 3))
+
+        return {
+            "total_bytes": size_bytes,
+            "total_mb": round(size_gb * 1024, 2),
+            "total_gb": round(size_gb, 2),
         }
-    }
+    except (OSError, ValueError, IndexError) as e:
+        return {
+            "total_bytes": 0,
+            "total_mb": 0.0,
+            "total_gb": 0.0,
+            "error": str(e)
+        }
 
 
 def get_disk_stats():
     """Get disk statistics."""
-    partitions = []
-    for partition in psutil.disk_partitions():
-        try:
-            usage = psutil.disk_usage(partition.mountpoint)
-            partitions.append({
-                "device": partition.device,
-                "mountpoint": partition.mountpoint,
-                "filesystem": partition.fstype,
-                "total": usage.total,
-                "used": usage.used,
-                "free": usage.free,
-                "percent": usage.percent,
-            })
-        except (OSError, IOError):
-            continue
-
-    disk_io = psutil.disk_io_counters()
-    return {
-        "partitions": partitions,
-        "io": {
-            "read_count": disk_io.read_count,
-            "write_count": disk_io.write_count,
-            "read_bytes": disk_io.read_bytes,
-            "write_bytes": disk_io.write_bytes,
-        } if disk_io else None,
-    }
-
-
-def get_network_stats():
-    """Get network statistics."""
-    net_io = psutil.net_io_counters()
-
-    interfaces = {}
-    for interface, addrs in psutil.net_if_addrs().items():
-        interfaces[interface] = []
-        for addr in addrs:
-            interfaces[interface].append({
-                "family": str(addr.family),
-                "address": addr.address,
-                "netmask": addr.netmask,
-                "broadcast": addr.broadcast,
-            })
+    home_dir = os.path.expanduser("~")
 
     return {
-        "io": {
-            "bytes_sent": net_io.bytes_sent,
-            "bytes_recv": net_io.bytes_recv,
-            "packets_sent": net_io.packets_sent,
-            "packets_recv": net_io.packets_recv,
-            "errors_in": net_io.errin,
-            "errors_out": net_io.errout,
-            "drops_in": net_io.dropin,
-            "drops_out": net_io.dropout,
-        },
-        "interfaces": interfaces,
+        "home_directory": {
+            "path": home_dir,
+            "usage": get_directory_size(home_dir)
+        }
     }
-
 
 def get_system_info():
     """Get general system information."""
@@ -151,9 +113,7 @@ def collect_all_stats():
         "timestamp": datetime.now().isoformat(),
         "system": get_system_info(),
         "cpu": get_cpu_stats(),
-        "memory": get_memory_stats(),
         "disk": get_disk_stats(),
-        "network": get_network_stats(),
         "load_average": get_load_average(),
     }
 
