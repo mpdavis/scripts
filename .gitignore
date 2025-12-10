@@ -1,0 +1,19 @@
+# Virtual environment
+venv/
+env/
+
+# Generated stats file
+server_stats.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+*.swp
+*.swo
+*~
