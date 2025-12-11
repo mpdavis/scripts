@@ -1,62 +1,81 @@
 # Scripts
 
-A collection of utility scripts for use across home network and hosted servers.
+A collection of utility scripts and services for home network automation and server management.
 
-## Environment
+## Repository Structure
 
-- Scripts are run on my FeralHosting VPS slot. 
-- Python 2.7 is already installed and should be preferred.
-- 
+This repository is organized into separate Python packages, each with its own dependencies and documentation:
 
-## Available Scripts
-
-### stats.py
-
-Collects server statistics and outputs them to JSON for HTTP serving.
-
-**Collected metrics:**
-- Disk usage (home directory and mountpoint stats)
-
-**Requirements:**
-- Python 2.7 or Python 3.x
-- psutil library
-
-**Setup:**
-
-For Python 2.7:
-```bash
-pip install 'psutil>=5.6.0,<6.0.0'
-python stats.py
+```
+scripts/
+├── seedbox/        # Seedbox statistics collection (Python 2.7/3.x)
+└── rsync/          # Rsync webhook service (Python 3.x)
 ```
 
-For Python 3.x:
+## Packages
+
+### seedbox
+
+Utilities for FeralHosting VPS seedbox automation and monitoring.
+
+**Features:**
+- Disk usage statistics collection (stats.py)
+- qBittorrent webhook trigger for rsync (trigger_rsync.py)
+- JSON output for HTTP serving
+- Python 2.7 and 3.x compatible
+
+**Quick start:**
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+cd seedbox
 pip install -r requirements.txt
-python stats.py
-```
 
-**Usage:**
-```bash
-# Use default output file (server_stats.json)
+# Collect stats
 python stats.py
 
-# Specify custom output path
-python stats.py -o /var/www/html/stats.json
-python stats.py --output /path/to/custom.json
+# Configure qBittorrent to trigger rsync on completion
+# The webhook URL is pre-configured as https://rsync.mpdavis.com/webhook
+# Add to qBittorrent: Tools > Options > Downloads > Run external program:
+# /path/to/seedbox/trigger_rsync.py "%N" "%L" "%F"
 ```
 
-**Automated updates:**
-Add to crontab for periodic updates:
+See [seedbox/README.md](seedbox/) for detailed documentation.
+
+---
+
+### rsync
+
+Lightweight webhook service for triggering rsync commands with request queuing.
+
+**Features:**
+- HTTP webhook endpoint for triggering rsync
+- Request queuing (prevents concurrent operations)
+- Status monitoring endpoints
+- Python 3.x only
+
+**Quick start:**
 ```bash
-# Update every 5 minutes to default location
-*/5 * * * * cd /path/to/scripts && python stats.py
+cd rsync
 
-# Update to web server directory
-*/5 * * * * cd /path/to/scripts && python stats.py -o /var/www/html/stats.json
+# Edit config.py to set your rsync command
+pip install -r requirements.txt
+python webhook.py
+
+# For production: install as systemd service (see rsync/INSTALL.md)
+sudo systemctl enable rsync-webhook
+sudo systemctl start rsync-webhook
 ```
+
+See [rsync/README.md](rsync/) and [rsync/INSTALL.md](rsync/INSTALL.md) for detailed documentation.
+
+---
+
+## Development
+
+Each package is self-contained with its own:
+- `requirements.txt` - Python dependencies
+- `README.md` - Package-specific documentation
+- `__init__.py` - Package initialization
 
 ## Contributing
 
-This is a personal utility repository. Add scripts as needed, keeping them simple and self-contained.
+This is a personal utility repository. Add new packages and scripts as needed, keeping them modular and self-contained.

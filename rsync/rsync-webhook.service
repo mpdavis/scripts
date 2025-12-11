@@ -1,0 +1,26 @@
+[Unit]
+Description=Rsync Webhook Service
+After=network.target
+
+[Service]
+Type=simple
+User=YOUR_USERNAME
+Group=YOUR_USERNAME
+WorkingDirectory=/opt/rsync-webhook
+Environment="PATH=/opt/rsync-webhook/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/rsync-webhook/venv/bin/python webhook.py
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=append:/var/log/rsync-webhook/webhook.log
+StandardError=append:/var/log/rsync-webhook/webhook-error.log
+
+# Security hardening (optional)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

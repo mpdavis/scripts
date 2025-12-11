@@ -2,8 +2,9 @@
 venv/
 env/
 
-# Generated stats file
+# Generated files
 server_stats.json
+*.log
 
 # Python
 __pycache__/
