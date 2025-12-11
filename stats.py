@@ -19,16 +19,6 @@ except ImportError:
     print("Error: psutil library is required. Install with: pip install psutil")
     exit(1)
 
-
-def get_cpu_stats():
-    """Get CPU statistics."""
-    return {
-        "usage_percent": psutil.cpu_percent(interval=1),
-        "count_physical": psutil.cpu_count(logical=False),
-        "count_logical": psutil.cpu_count(logical=True)
-    }
-
-
 def get_directory_size(path):
     """Calculate total size of a directory using du command."""
     try:
@@ -71,44 +61,11 @@ def get_disk_stats():
         }
     }
 
-def get_system_info():
-    """Get general system information."""
-    boot_time = datetime.fromtimestamp(psutil.boot_time())
-    uptime_seconds = (datetime.now() - boot_time).total_seconds()
-
-    return {
-        "hostname": socket.gethostname(),
-        "platform": platform.system(),
-        "platform_release": platform.release(),
-        "platform_version": platform.version(),
-        "architecture": platform.machine(),
-        "processor": platform.processor(),
-        "boot_time": boot_time.isoformat(),
-        "uptime_seconds": uptime_seconds,
-    }
-
-
-def get_load_average():
-    """Get system load average (Unix-like systems only)."""
-    try:
-        load1, load5, load15 = psutil.getloadavg()
-        return {
-            "1min": load1,
-            "5min": load5,
-            "15min": load15,
-        }
-    except (AttributeError, OSError):
-        return None
-
-
 def collect_all_stats():
     """Collect all server statistics."""
     return {
         "timestamp": datetime.now().isoformat(),
-        "system": get_system_info(),
-        "cpu": get_cpu_stats(),
         "disk": get_disk_stats(),
-        "load_average": get_load_average(),
     }
 
 

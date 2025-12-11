@@ -2,6 +2,12 @@
 
 A collection of utility scripts for use across home network and hosted servers.
 
+## Environment
+
+- Scripts are run on my FeralHosting VPS slot. 
+- Python 2.7 is already installed and should be preferred.
+- 
+
 ## Available Scripts
 
 ### stats.py
@@ -9,12 +15,7 @@ A collection of utility scripts for use across home network and hosted servers.
 Collects server statistics and outputs them to JSON for HTTP serving.
 
 **Collected metrics:**
-- System info (hostname, platform, uptime)
-- CPU usage and details
-- Memory and swap usage
-- Disk usage and I/O
-- Network statistics
-- Load averages
+- Disk usage (home directory and mountpoint stats)
 
 **Requirements:**
 - Python 2.7 or Python 3.x
