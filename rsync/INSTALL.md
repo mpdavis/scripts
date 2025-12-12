@@ -10,24 +10,21 @@ This guide explains how to run the rsync webhook as a systemd service that start
 
 ## Standard Installation Location
 
-The recommended location is **`/opt/rsync-webhook/`** which follows the Filesystem Hierarchy Standard (FHS) for third-party applications.
+The recommended location is **`/opt/scripts/rsync/`** which follows the Filesystem Hierarchy Standard (FHS) for third-party applications. This allows you to manage updates via git pull rather than copying files.
 
 ## Installation Steps
 
-### 1. Install to /opt
+### 1. Clone repository to /opt
 
 ```bash
-# Create installation directory
-sudo mkdir -p /opt/rsync-webhook
-
-# Copy files (from your cloned repository)
-sudo cp -r /path/to/scripts/rsync/* /opt/rsync-webhook/
+# Clone the repository directly to /opt
+sudo git clone https://github.com/mpdavis/scripts.git /opt/scripts
 
 # Set ownership to your user
-sudo chown -R $USER:$USER /opt/rsync-webhook
+sudo chown -R $USER:$USER /opt/scripts
 
-# Navigate to installation directory
-cd /opt/rsync-webhook
+# Navigate to rsync webhook directory
+cd /opt/scripts/rsync
 
 # Create virtual environment
 python3 -m venv venv
@@ -63,15 +60,15 @@ Edit `rsync-webhook.service` and update the username:
 
 - Replace `YOUR_USERNAME` with your actual username (both User and Group)
 
-The paths are pre-configured for the standard `/opt/rsync-webhook/` location.
+The paths should point to `/opt/scripts/rsync/` location.
 
 **Example:**
 ```ini
 User=michael
 Group=michael
-WorkingDirectory=/opt/rsync-webhook
-Environment="PATH=/opt/rsync-webhook/venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/opt/rsync-webhook/venv/bin/python webhook.py
+WorkingDirectory=/opt/scripts/rsync
+Environment="PATH=/opt/scripts/rsync/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/scripts/rsync/venv/bin/python webhook.py
 ```
 
 If you chose a different installation path, update WorkingDirectory, Environment PATH, and ExecStart accordingly.
@@ -79,8 +76,8 @@ If you chose a different installation path, update WorkingDirectory, Environment
 ### 5. Install the service
 
 ```bash
-# Copy service file to systemd directory
-sudo cp rsync-webhook.service /etc/systemd/system/
+# Create symlink to service file in systemd directory
+sudo ln -s /opt/scripts/rsync/rsync-webhook.service /etc/systemd/system/rsync-webhook.service
 
 # Reload systemd to recognize the new service
 sudo systemctl daemon-reload
@@ -91,6 +88,8 @@ sudo systemctl enable rsync-webhook
 # Start the service now
 sudo systemctl start rsync-webhook
 ```
+
+**Note:** Using a symlink instead of copying allows you to update the service file via git pull without manually copying it again.
 
 ## Managing the Service
 
@@ -138,10 +137,10 @@ After starting the service, test it:
 sudo systemctl status rsync-webhook
 
 # Test health endpoint
-curl http://localhost:8080/health
+curl http://localhost:8080/sync/health
 
 # Trigger webhook
-curl -X POST http://localhost:8080/webhook
+curl -X POST http://localhost:8080/sync/webhook
 
 # Check logs
 sudo journalctl -u rsync-webhook -n 50
@@ -178,24 +177,34 @@ sudo journalctl -u rsync-webhook -n 100
 
 ## Updating the Service
 
-When you make changes to the webhook code or configuration:
+When updates are pushed to the repository:
 
 ```bash
-# 1. Stop the service
-sudo systemctl stop rsync-webhook
+# Navigate to the repository
+cd /opt/scripts
 
-# 2. Make your changes
-# Edit config.py, webhook.py, etc.
+# Pull the latest changes
+git pull
 
-# 3. If you modified the service file:
-sudo cp rsync-webhook.service /etc/systemd/system/
+# If dependencies changed, update them
+cd rsync
+source venv/bin/activate
+pip install -r requirements.txt
+deactivate
+
+# If the service file was modified, reload systemd
 sudo systemctl daemon-reload
 
-# 4. Start the service
-sudo systemctl start rsync-webhook
+# Restart the service to apply changes
+sudo systemctl restart rsync-webhook
 
-# 5. Verify it's running
+# Verify it's running
 sudo systemctl status rsync-webhook
+```
+
+**Quick update (most common case):**
+```bash
+cd /opt/scripts && git pull && sudo systemctl restart rsync-webhook
 ```
 
 ## Uninstalling
@@ -218,12 +227,13 @@ Different paths you might see and when to use them:
 
 | Path | Use Case | Notes |
 |------|----------|-------|
-| `/opt/rsync-webhook/` | **Recommended** - Production system service | Standard for third-party applications |
+| `/opt/scripts/rsync/` | **Recommended** - Production system service | Cloned from git, easy updates via pull |
+| `/opt/rsync-webhook/` | Alternative - copied files | Standard for third-party apps, manual updates |
 | `/usr/local/lib/rsync-webhook/` | Alternative production location | For locally compiled/installed software |
-| `/home/user/rsync-webhook/` | Development or personal use | Not ideal for system services |
+| `/home/user/scripts/rsync/` | Development or personal use | Not ideal for system services |
 | `/srv/rsync-webhook/` | Service data directory | Sometimes used for web services |
 
-For a production webhook service, **`/opt/rsync-webhook/`** is the most conventional choice.
+For a production webhook service with git-based updates, **`/opt/scripts/rsync/`** is the recommended choice.
 
 ## Alternative: Running with Screen/tmux (Not Recommended)
 
@@ -232,7 +242,7 @@ If you don't have systemd access, you can run the webhook in screen/tmux:
 ```bash
 # Using screen
 screen -S rsync-webhook
-cd /opt/rsync-webhook
+cd /opt/scripts/rsync
 source venv/bin/activate
 python webhook.py
 # Press Ctrl+A, then D to detach

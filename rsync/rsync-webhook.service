@@ -6,9 +6,9 @@ After=network.target
 Type=simple
 User=YOUR_USERNAME
 Group=YOUR_USERNAME
-WorkingDirectory=/opt/rsync-webhook
-Environment="PATH=/opt/rsync-webhook/venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/opt/rsync-webhook/venv/bin/python webhook.py
+WorkingDirectory=/opt/scripts/rsync
+Environment="PATH=/opt/scripts/rsync/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/scripts/rsync/venv/bin/python webhook.py
 
 # Restart policy
 Restart=always
