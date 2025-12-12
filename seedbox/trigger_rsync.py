@@ -5,6 +5,8 @@ Trigger Rsync Webhook
 Script to trigger the rsync webhook service.
 Designed to be called from qBittorrent when a torrent completes.
 
+Logs are written to ~/trigger_rsync.log
+
 Usage:
     python trigger_rsync.py
 
@@ -16,9 +18,12 @@ qBittorrent integration:
 from __future__ import print_function
 import sys
 import os
+import logging
+from datetime import datetime
 
 # Configuration
 WEBHOOK_URL = "https://home.mpdavis.com/sync/webhook"
+LOG_FILE = os.path.expanduser("~/trigger_rsync.log")
 
 # For Python 2.7/3.x compatibility
 try:
@@ -30,22 +35,32 @@ except ImportError:
     from urllib2 import Request, urlopen, URLError, HTTPError
 
 
+def setup_logging():
+    """Configure logging to write to both file and console."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(LOG_FILE),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+
+
 def trigger_webhook(torrent_name=None, category=None, save_path=None):
     """Trigger the rsync webhook."""
 
-    print("=" * 60)
-    print("Triggering rsync webhook")
-    print("=" * 60)
+    logging.info("=" * 60)
+    logging.info("Triggering rsync webhook")
 
     if torrent_name:
-        print("Torrent name: {}".format(torrent_name))
+        logging.info("Torrent name: {}".format(torrent_name))
     if category:
-        print("Category: {}".format(category))
+        logging.info("Category: {}".format(category))
     if save_path:
-        print("Save path: {}".format(save_path))
+        logging.info("Save path: {}".format(save_path))
 
-    print("Webhook URL: {}".format(WEBHOOK_URL))
-    print("-" * 60)
+    logging.info("Webhook URL: {}".format(WEBHOOK_URL))
 
     try:
         request = Request(WEBHOOK_URL)
@@ -55,32 +70,35 @@ def trigger_webhook(torrent_name=None, category=None, save_path=None):
         response = urlopen(request, timeout=10)
         response_data = response.read().decode('utf-8')
 
-        print("SUCCESS: Webhook triggered successfully")
-        print("Response: {}".format(response_data))
-        print("=" * 60)
+        logging.info("SUCCESS: Webhook triggered successfully")
+        logging.info("Response: {}".format(response_data))
+        logging.info("=" * 60)
         return 0
 
     except HTTPError as e:
-        print("ERROR: HTTP Error {}".format(e.code))
-        print("Response: {}".format(e.read().decode('utf-8')))
-        print("=" * 60)
+        logging.error("HTTP Error {}".format(e.code))
+        logging.error("Response: {}".format(e.read().decode('utf-8')))
+        logging.info("=" * 60)
         return 1
 
     except URLError as e:
-        print("ERROR: Failed to reach webhook server")
-        print("Reason: {}".format(e.reason))
-        print("=" * 60)
+        logging.error("Failed to reach webhook server")
+        logging.error("Reason: {}".format(e.reason))
+        logging.info("=" * 60)
         return 1
 
     except Exception as e:
-        print("ERROR: Unexpected error")
-        print("Error: {}".format(str(e)))
-        print("=" * 60)
+        logging.error("Unexpected error")
+        logging.error("Error: {}".format(str(e)))
+        logging.info("=" * 60)
         return 1
 
 
 def main():
     """Main function to handle command line arguments."""
+
+    # Set up logging
+    setup_logging()
 
     # qBittorrent passes these parameters:
     # %N - Torrent name
