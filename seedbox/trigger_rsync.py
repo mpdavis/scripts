@@ -18,7 +18,7 @@ import sys
 import os
 
 # Configuration
-WEBHOOK_URL = "https://rsync.mpdavis.com/webhook"
+WEBHOOK_URL = "https://home.mpdavis.com/sync/webhook"
 
 # For Python 2.7/3.x compatibility
 try:
