@@ -12,12 +12,15 @@ import threading
 from datetime import datetime
 from queue import Queue
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Blueprint
 
 from config import RSYNC_COMMAND, HOST, PORT, LOG_FILE, LOG_LEVEL
 
 # Initialize Flask app
 app = Flask(__name__)
+
+# Create a blueprint with the URL prefix for reverse proxy routing
+api = Blueprint('api', __name__, url_prefix='/sync')
 
 # Set up logging
 logging.basicConfig(
@@ -128,7 +131,7 @@ task_counter = 0
 task_counter_lock = threading.Lock()
 
 
-@app.route('/webhook', methods=['POST'])
+@api.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming webhook requests."""
     global task_counter
@@ -152,7 +155,7 @@ def webhook():
     }), 202
 
 
-@app.route('/status', methods=['GET'])
+@api.route('/status', methods=['GET'])
 def status():
     """Get current status of the webhook service."""
     with task_lock:
@@ -165,10 +168,14 @@ def status():
     })
 
 
-@app.route('/health', methods=['GET'])
+@api.route('/health', methods=['GET'])
 def health():
     """Health check endpoint."""
     return jsonify({'status': 'healthy'}), 200
+
+
+# Register the blueprint
+app.register_blueprint(api)
 
 
 if __name__ == '__main__':
