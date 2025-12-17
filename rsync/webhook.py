@@ -48,6 +48,12 @@ class RsyncTask:
         self.status = 'queued'
         self.result = None
         self.error = None
+        self.progress = {
+            'percentage': 0,
+            'transferred': '0',
+            'rate': '0/s',
+            'current_file': None
+        }
 
     def to_dict(self):
         return {
@@ -55,43 +61,93 @@ class RsyncTask:
             'timestamp': self.timestamp.isoformat(),
             'status': self.status,
             'result': self.result,
-            'error': self.error
+            'error': self.error,
+            'progress': self.progress if self.status == 'running' else None
         }
 
 
+def parse_rsync_progress(line, task):
+    """Parse rsync progress output and update task progress."""
+    import re
+
+    # rsync --info=progress2 format:
+    # "  1,234,567  12%  123.45kB/s    0:00:12"
+    # or with file info:
+    # "  1,234,567  12%  123.45kB/s    0:00:12  (xfr#1, to-chk=99/100)"
+
+    # Try to match progress line
+    match = re.search(r'\s+([\d,]+)\s+(\d+)%\s+([\d.]+[kMG]?B/s)', line)
+    if match:
+        transferred = match.group(1)
+        percentage = int(match.group(2))
+        rate = match.group(3)
+
+        task.progress['transferred'] = transferred
+        task.progress['percentage'] = percentage
+        task.progress['rate'] = rate
+
+        logger.debug(f"Task {task.task_id} progress: {percentage}% - {transferred} at {rate}")
+
+
 def execute_rsync(task):
-    """Execute the rsync command."""
+    """Execute the rsync command with real-time progress tracking."""
     global current_task
 
     with task_lock:
         current_task = task
         task.status = 'running'
 
+    # Add progress flag to rsync command
+    command = RSYNC_COMMAND + ['--info=progress2']
+
     logger.info(f"Starting rsync task {task.task_id}")
-    logger.info(f"Command: {' '.join(RSYNC_COMMAND)}")
+    logger.info(f"Command: {' '.join(command)}")
+
+    stdout_lines = []
+    stderr_lines = []
 
     try:
-        result = subprocess.run(
-            RSYNC_COMMAND,
-            capture_output=True,
+        # Use Popen for real-time output parsing
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
-            check=True
+            bufsize=1
         )
 
-        task.status = 'completed'
-        task.result = {
-            'stdout': result.stdout,
-            'stderr': result.stderr,
-            'returncode': result.returncode
-        }
-        logger.info(f"Task {task.task_id} completed successfully")
+        # Read output line by line
+        for line in process.stdout:
+            stdout_lines.append(line)
+
+            # Parse progress information
+            parse_rsync_progress(line, task)
+
+            # Log non-progress lines
+            if line.strip() and not line.strip().startswith((' ', '\r')):
+                logger.info(f"Task {task.task_id}: {line.strip()}")
+
+        # Wait for process to complete
+        returncode = process.wait()
+
+        if returncode == 0:
+            task.status = 'completed'
+            task.progress['percentage'] = 100
+            task.result = {
+                'stdout': ''.join(stdout_lines),
+                'stderr': '',
+                'returncode': returncode
+            }
+            logger.info(f"Task {task.task_id} completed successfully")
+        else:
+            raise subprocess.CalledProcessError(returncode, command, ''.join(stdout_lines))
 
     except subprocess.CalledProcessError as e:
         task.status = 'failed'
         task.error = {
             'message': str(e),
-            'stdout': e.stdout,
-            'stderr': e.stderr,
+            'stdout': e.stdout if hasattr(e, 'stdout') else ''.join(stdout_lines),
+            'stderr': e.stderr if hasattr(e, 'stderr') else '',
             'returncode': e.returncode
         }
         logger.error(f"Task {task.task_id} failed: {e}")
